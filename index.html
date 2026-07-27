@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>投信組入銘柄デイリームーブ</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #111827;
+      --muted: #687383;
+      --line: #d9dee7;
+      --blue: #1f73ea;
+      --blue-soft: #eaf2ff;
+      --red: #b90000;
+      --red-soft: #fee8e6;
+      --green: #087f50;
+      --green-soft: #dff7ea;
+      --chip: #f1f3f6;
+      --shadow: 0 18px 45px rgba(21, 31, 53, .10);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      min-width: 320px;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(1180px, calc(100% - 28px));
+      margin: 24px auto;
+      display: grid;
+      gap: 14px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .brand {
+      min-width: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(24px, 3.4vw, 42px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .primary-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .icon-btn,
+    .text-btn,
+    .segmented button {
+      min-height: 38px;
+      border-radius: 8px;
+      display: inline-grid;
+      place-items: center;
+      color: var(--ink);
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+
+    .icon-btn {
+      width: 38px;
+      padding: 0;
+    }
+
+    .text-btn {
+      grid-auto-flow: column;
+      gap: 7px;
+      padding: 0 13px;
+      font-weight: 700;
+    }
+
+    .text-btn.blue {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: white;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .control-panel {
+      padding: 14px;
+      display: grid;
+      gap: 14px;
+      position: sticky;
+      top: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .note {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--muted);
+      padding: 10px 11px;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+      padding: 10px 11px;
+    }
+
+    .field textarea {
+      min-height: 132px;
+      resize: vertical;
+      line-height: 1.5;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(31, 115, 234, .14);
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      background: var(--chip);
+      border-radius: 8px;
+      padding: 4px;
+    }
+
+    .segmented button {
+      min-height: 34px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .segmented button[aria-pressed="true"] {
+      background: #fff;
+      color: var(--blue);
+      box-shadow: 0 1px 4px rgba(27, 41, 68, .12);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .form-grid .wide {
+      grid-column: 1 / -1;
+    }
+
+    .stat-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      min-width: 0;
+    }
+
+    .stat .label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .stat .value {
+      margin-top: 5px;
+      font-weight: 800;
+      font-size: 20px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .table-panel {
+      overflow: hidden;
+    }
+
+    .table-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 14px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .fund-title {
+      min-width: 0;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .fund-title strong {
+      font-size: 18px;
+    }
+
+    .sort-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--blue);
+      font-weight: 800;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th, td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      background: #fbfcfe;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+      width: 36%;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    tbody tr {
+      transition: background .15s ease;
+    }
+
+    tbody tr:hover {
+      background: #f8fbff;
+    }
+
+    .holding {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .ticker {
+      display: inline-grid;
+      place-items: center;
+      min-width: 48px;
+      height: 21px;
+      padding: 0 7px;
+      border-radius: 4px;
+      color: white;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 700;
+    }
+
+    .money,
+    .number {
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+    }
+
+    .positive { color: var(--red); }
+    .negative { color: var(--green); }
+    .flat { color: var(--muted); }
+
+    .pill {
+      display: inline-flex;
+      min-width: 84px;
+      justify-content: center;
+      align-items: center;
+      gap: 3px;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 900;
+    }
+
+    .pill.positive {
+      background: var(--red-soft);
+    }
+
+    .pill.negative {
+      background: var(--green-soft);
+    }
+
+    .pill.flat {
+      background: var(--chip);
+    }
+
+    .empty {
+      padding: 42px 20px;
+      color: var(--muted);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #111827;
+      color: white;
+      padding: 10px 13px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 10;
+      max-width: min(380px, calc(100% - 28px));
+      font-size: 13px;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2.4;
+    }
+
+    @media (max-width: 900px) {
+      .topbar,
+      .layout,
+      .stat-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .primary-actions {
+        justify-content: flex-start;
+      }
+
+      .control-panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .app {
+        width: min(100% - 18px, 1180px);
+        margin: 12px auto;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stat .value {
+        font-size: 18px;
+      }
+
+      .table-head {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="topbar" aria-label="アプリヘッダー">
+      <div class="brand">
+        <h1>投信組入銘柄デイリームーブ</h1>
+        <p>組入銘柄の前日比と1日変動率を、ファンドへの寄与度つきで一覧化します。<span id="dataSource">リアルデータ未取得</span></p>
+      </div>
+      <div class="primary-actions">
+        <button class="text-btn blue" id="refreshLive" type="button" title="現在値を更新する">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.3"/><path d="M3 12A9 9 0 0 1 18.5 5.7"/><path d="M21 4v6h-6"/><path d="M3 20v-6h6"/></svg>
+          リアル更新
+        </button>
+      </div>
+    </section>
+
+    <section class="layout">
+      <aside class="panel control-panel" aria-label="操作パネル">
+        <div class="field">
+          <label for="fundSelect">ファンド</label>
+          <select id="fundSelect"></select>
+        </div>
+
+        <div class="field">
+          <label for="search">銘柄検索</label>
+          <input id="search" type="search" placeholder="例: NVIDIA / NVDA / マイクロソフト" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label>並び替え</label>
+          <div class="segmented" role="group" aria-label="並び替え">
+            <button type="button" data-sort="pct" aria-pressed="true">変動率</button>
+            <button type="button" data-sort="change" aria-pressed="false">前日比</button>
+            <button type="button" data-sort="price" aria-pressed="false">現在値</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>データ</label>
+          <div class="note">組入比率はファンドごとに取得可否が異なるため表示しません。価格・前日比・1日変動率はGoogle Financeから更新します。</div>
+        </div>
+      </aside>
+
+      <section class="main-content">
+        <div class="stat-strip" aria-label="集計">
+          <div class="stat">
+            <div class="label">平均1日変動</div>
+            <div class="value" id="fundMove">+0.00%</div>
+          </div>
+          <div class="stat">
+            <div class="label">表示銘柄数</div>
+            <div class="value" id="count">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">上昇トップ</div>
+            <div class="value" id="totalWeight">0.00%</div>
+          </div>
+          <div class="stat">
+            <div class="label">下落トップ</div>
+            <div class="value" id="topImpact">-</div>
+          </div>
+        </div>
+
+        <div class="panel table-panel">
+          <div class="table-head">
+            <div class="fund-title">
+              <strong id="fundName">FANG+風デモ</strong>
+              <span class="sort-label" id="sortLabel">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
+                1日の変動率で並べ替え
+              </span>
+            </div>
+            <button class="text-btn" id="invertSort" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M7 7h10"/><path d="M7 12h7"/><path d="M7 17h4"/></svg>
+              昇降切替
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>銘柄</th>
+                  <th>現在値</th>
+                  <th>前日比</th>
+                  <th>1日変動率</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+            <div class="empty" id="empty" hidden>一致する銘柄がありません。</div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const displayNames = {
+      AAPL: "Apple",
+      ADBE: "Adobe",
+      ADI: "Analog Devices",
+      AFRM: "Affirm",
+      AMD: "Advanced Micro Devices",
+      AMZN: "Amazon.com",
+      AMAT: "Applied Materials",
+      ANET: "Arista Networks",
+      APP: "AppLovin",
+      ARM: "Arm Holdings",
+      ASML: "ASML Holding",
+      ASTS: "AST SpaceMobile",
+      AVGO: "ブロードコム",
+      BE: "Bloom Energy",
+      "BRK.B": "Berkshire Hathaway",
+      CIEN: "Ciena",
+      CLS: "Celestica",
+      COHR: "Coherent",
+      COST: "Costco Wholesale",
+      COIN: "Coinbase",
+      CRDO: "Credo Technology",
+      CRM: "Salesforce",
+      CRWD: "CrowdStrike",
+      CVNA: "Carvana",
+      CSCO: "Cisco Systems",
+      DDOG: "Datadog",
+      DELL: "Dell Technologies",
+      DE: "Deere",
+      DASH: "DoorDash",
+      DUOL: "Duolingo",
+      ETN: "Eaton",
+      FICO: "Fair Isaac",
+      FIX: "Comfort Systems USA",
+      GE: "GE Aerospace",
+      GOOGL: "アルファベット（クラスA）",
+      GS: "Goldman Sachs",
+      HD: "Home Depot",
+      HOOD: "Robinhood Markets",
+      IBM: "IBM",
+      INTC: "Intel",
+      IREN: "IREN",
+      ISRG: "Intuitive Surgical",
+      INTU: "Intuit",
+      JPM: "JPMorgan Chase",
+      KLAC: "KLA",
+      LLY: "Eli Lilly",
+      LITE: "Lumentum",
+      LRCX: "Lam Research",
+      MA: "Mastercard",
+      MDB: "MongoDB",
+      META: "Meta",
+      MELI: "MercadoLibre",
+      MSFT: "マイクロソフト",
+      MU: "マイクロンテクノロジー",
+      NOW: "ServiceNow",
+      NET: "Cloudflare",
+      NFLX: "ネットフリックス",
+      NBIS: "Nebius Group",
+      NVDA: "NVIDIA",
+      NVO: "Novo Nordisk",
+      ORCL: "Oracle",
+      PDD: "PDD Holdings",
+      PANW: "Palo Alto Networks",
+      PATH: "UiPath",
+      PLTR: "Palantir",
+      QCOM: "Qualcomm",
+      RKLB: "Rocket Lab",
+      RBLX: "Roblox",
+      ROKU: "Roku",
+      RTX: "RTX",
+      SAP: "SAP",
+      SATS: "EchoStar",
+      SE: "Sea",
+      SHEL: "Shell",
+      SHOP: "Shopify",
+      SNOW: "Snowflake",
+      SONY: "Sony Group",
+      SPCX: "SpaceX",
+      SPOT: "Spotify",
+      STX: "Seagate Technology",
+      TSLA: "Tesla",
+      TSM: "Taiwan Semiconductor",
+      TOST: "Toast",
+      TER: "Teradyne",
+      TXN: "Texas Instruments",
+      U: "Unity Software",
+      UBER: "Uber Technologies",
+      V: "Visa",
+      VST: "Vistra",
+      VRT: "Vertiv",
+      WDC: "Western Digital",
+      WMT: "Walmart",
+      XYZ: "Block",
+      ZS: "Zscaler",
+      GOOG: "アルファベット（クラスC）",
+      "000660.KS": "SK hynix",
+      "005930.KS": "Samsung Electronics",
+      "1942.T": "関電工",
+      "285A.T": "キオクシアホールディングス",
+      "3110.T": "日東紡績",
+      "3436.T": "SUMCO",
+      "4004.T": "レゾナック・ホールディングス",
+      "4062.T": "イビデン",
+      "5016.T": "JX金属",
+      "5706.T": "三井金属鉱業",
+      "5801.T": "古河電気工業",
+      "5802.T": "住友電気工業",
+      "5803.T": "フジクラ",
+      "5805.T": "SWCC",
+      "6269.T": "三井海洋開発",
+      "6507.T": "シンフォニアテクノロジー",
+      "6787.T": "メイコー",
+      "6871.T": "日本マイクロニクス",
+      "6976.T": "太陽誘電",
+      "6981.T": "村田製作所",
+      "7003.T": "三井E&S",
+      "7220.T": "武蔵精密工業",
+      "9412.T": "スカパーJSAT"
+    };
+
+    const fundPresets = [
+      makeFund("fang-plus", "FANG+", ["MU", "PLTR", "META", "NVDA", "AMZN", "AVGO", "GOOGL", "MSFT", "AAPL", "NFLX"]),
+      makeFund("mega10", "メガ10", ["AVGO", "NVDA", "AMZN", "GOOGL", "TSLA", "MSFT", "LLY", "V", "META", "MA"]),
+      makeFund("ippo-tech", "一歩テック", ["NVDA", "AAPL", "GOOGL", "TSLA", "MSFT", "AMZN", "META", "AVGO", "KLAC", "PLTR", "PANW", "PDD", "MU", "ISRG", "AMD", "MELI", "NFLX", "INTC", "LRCX", "ARM"]),
+      makeFund("z-tech", "Zテック", ["NVDA", "GOOG", "AAPL", "MSFT", "AMZN", "SPCX", "TSM", "AVGO", "TSLA", "META", "005930.KS", "MU", "000660.KS", "AMD", "ASML", "INTC", "ORCL", "CSCO", "LRCX", "AMAT"]),
+      makeFund("us-momentum", "米国モメンタム", ["MU", "RKLB", "WDC", "STX", "DELL", "CIEN", "INTC", "BE", "LITE", "IREN", "SATS", "ASTS", "COHR", "TER", "CVNA", "APP", "CRDO", "VRT", "FIX", "PLTR", "HOOD"]),
+      makeFund("developed-momentum", "先進国モメンタム", ["285A.T", "5801.T", "MU", "4062.T", "RKLB", "WDC", "STX", "BE", "LITE", "5706.T", "IREN", "SATS", "CIEN", "NBIS", "CLS", "CVNA", "5803.T", "APP", "ASTS", "CRDO", "VRT"]),
+      makeFund("japan-momentum", "日本モメンタム", ["285A.T", "5801.T", "6976.T", "4062.T", "6787.T", "7220.T", "3436.T", "5706.T", "4004.T", "5016.T", "6981.T", "3110.T", "5803.T", "5802.T", "7003.T", "9412.T", "6507.T", "6871.T", "5805.T", "6269.T", "1942.T"]),
+      makeFund("sp500-top10", "Ｓ＆Ｐ５００トップ１０インデックス", ["NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "AVGO", "GOOG", "MU", "META", "TSLA", "BRK.B"]),
+      makeFund("giga-tech7", "ギガテック７", ["GOOGL", "AVGO", "NVDA", "AAPL", "AMZN", "META", "MSFT"])
+    ];
+
+    function makeFund(id, name, tickers) {
+      return {
+        id,
+        name,
+        holdings: tickers.map(ticker => ({
+          ticker,
+          name: displayNames[ticker] || ticker,
+          price: 0,
+          change: 0,
+          color: colorFromTicker(ticker)
+        }))
+      };
+    }
+
+    const storeKey = "fund-holdings-daily-move:v7";
+    const apiBaseUrl = location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost" ? "http://127.0.0.1:8765" : "";
+    const staticQuotesUrl = "latest-quotes.json";
+    let state = loadState();
+    let activeFundId = state.funds[0].id;
+    let sortBy = "pct";
+    let sortDir = "desc";
+
+    const els = {
+      fundSelect: document.querySelector("#fundSelect"),
+      search: document.querySelector("#search"),
+      tbody: document.querySelector("#tbody"),
+      empty: document.querySelector("#empty"),
+      fundName: document.querySelector("#fundName"),
+      sortLabel: document.querySelector("#sortLabel"),
+      fundMove: document.querySelector("#fundMove"),
+      count: document.querySelector("#count"),
+      totalWeight: document.querySelector("#totalWeight"),
+      topImpact: document.querySelector("#topImpact"),
+      dataSource: document.querySelector("#dataSource"),
+      refreshLive: document.querySelector("#refreshLive"),
+      toast: document.querySelector("#toast")
+    };
+
+    renderAll();
+    fetchLiveQuotes({ silent: true });
+
+    els.fundSelect.addEventListener("change", event => {
+      activeFundId = event.target.value;
+      renderAll();
+      fetchLiveQuotes({ silent: true });
+    });
+
+    els.search.addEventListener("input", renderTable);
+
+    document.querySelectorAll("[data-sort]").forEach(button => {
+      button.addEventListener("click", () => {
+        sortBy = button.dataset.sort;
+        document.querySelectorAll("[data-sort]").forEach(item => {
+          item.setAttribute("aria-pressed", String(item === button));
+        });
+        updateSortLabel();
+        renderTable();
+      });
+    });
+
+    document.querySelector("#invertSort").addEventListener("click", () => {
+      sortDir = sortDir === "desc" ? "asc" : "desc";
+      updateSortLabel();
+      renderTable();
+    });
+
+    els.refreshLive.addEventListener("click", () => {
+      fetchLiveQuotes();
+    });
+
+    function renderAll() {
+      renderFundSelect();
+      updateSortLabel();
+      renderTable();
+    }
+
+    function renderFundSelect() {
+      els.fundSelect.innerHTML = state.funds.map(fund => (
+        `<option value="${escapeHtml(fund.id)}"${fund.id === activeFundId ? " selected" : ""}>${escapeHtml(fund.name)}</option>`
+      )).join("");
+    }
+
+    async function fetchLiveQuotes(options = {}) {
+      const fund = getActiveFund();
+      const symbols = fund.holdings.map(item => item.ticker).filter(Boolean);
+      if (!symbols.length) return;
+
+      els.refreshLive.disabled = true;
+      els.refreshLive.style.opacity = ".62";
+      if (!options.silent) showToast("リアルデータを取得しています。");
+
+      try {
+        const quoteUrl = apiBaseUrl
+          ? `${apiBaseUrl}/api/quotes?symbols=${encodeURIComponent(symbols.join(","))}`
+          : `${staticQuotesUrl}?v=${Date.now()}`;
+        const response = await fetch(quoteUrl, {
+          cache: "no-store"
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        const quotes = new Map((payload.quotes || []).map(quote => [quote.symbol, quote]));
+
+        fund.holdings = fund.holdings.map(item => {
+          const quote = quotes.get(item.ticker);
+          if (!quote) return item;
+          return {
+            ...item,
+            name: item.name || quote.name,
+            price: quote.price,
+            change: quote.change,
+            currency: quote.currency,
+            exchange: quote.exchange,
+            marketState: quote.marketState,
+            regularMarketTime: quote.regularMarketTime
+          };
+        });
+
+        saveState();
+        renderTable();
+        const failed = (payload.errors || []).length;
+        const fetchedAt = payload.fetchedAt ? new Date(payload.fetchedAt * 1000) : new Date();
+        els.dataSource.textContent = `最終取得: ${fetchedAt.toLocaleString("ja-JP")} / ${payload.source || "market data"}`;
+        showToast(failed ? `取得完了。一部失敗: ${failed}件` : "リアルデータに更新しました。");
+      } catch (error) {
+        els.dataSource.textContent = "リアルデータ取得に失敗";
+        if (!options.silent) showToast(`取得に失敗しました: ${error.message}`);
+      } finally {
+        els.refreshLive.disabled = false;
+        els.refreshLive.style.opacity = "1";
+      }
+    }
+
+    function renderTable() {
+      const fund = getActiveFund();
+      const query = els.search.value.trim().toLowerCase();
+      const rows = fund.holdings
+        .map(item => enrich(item))
+        .filter(item => !query || `${item.ticker} ${item.name}`.toLowerCase().includes(query))
+        .sort((a, b) => {
+          const direction = sortDir === "desc" ? -1 : 1;
+          return (a[sortBy] - b[sortBy]) * direction;
+        });
+
+      els.fundName.textContent = fund.name;
+      els.tbody.innerHTML = rows.map(rowTemplate).join("");
+      els.empty.hidden = rows.length > 0;
+      updateStats(rows, fund.holdings.map(item => enrich(item)));
+    }
+
+    function rowTemplate(item) {
+      const tone = getTone(item.pct);
+      const changeTone = getTone(item.change);
+      return `
+        <tr>
+          <td>
+            <div class="holding">
+              <span class="ticker" style="background:${item.color || colorFromTicker(item.ticker)}">${escapeHtml(item.ticker)}</span>
+              <span class="name">${escapeHtml(item.name)}</span>
+            </div>
+          </td>
+          <td class="money">${formatMoney(item.price, item.currency)}</td>
+          <td class="money ${changeTone}">${formatSignedMoney(item.change, item.currency)}</td>
+          <td><span class="pill ${tone}">${arrow(item.pct)}${formatPct(item.pct)}</span></td>
+        </tr>
+      `;
+    }
+
+    function updateStats(rows, allRows) {
+      const avgMove = allRows.length ? allRows.reduce((sum, item) => sum + item.pct, 0) / allRows.length : 0;
+      const top = [...allRows].sort((a, b) => b.pct - a.pct)[0];
+      const bottom = [...allRows].sort((a, b) => a.pct - b.pct)[0];
+
+      els.fundMove.textContent = formatSignedPct(avgMove);
+      els.fundMove.className = `value ${getTone(avgMove)}`;
+      els.count.textContent = String(rows.length);
+      els.totalWeight.textContent = top ? `${top.ticker} ${formatSignedPct(top.pct)}` : "-";
+      els.topImpact.textContent = bottom ? `${bottom.ticker} ${formatSignedPct(bottom.pct)}` : "-";
+    }
+
+    function updateSortLabel() {
+      const labels = { pct: "1日の変動率", change: "前日比", price: "現在値" };
+      const direction = sortDir === "desc" ? "高い順" : "低い順";
+      els.sortLabel.lastChild.textContent = ` ${labels[sortBy]}で並べ替え (${direction})`;
+    }
+
+    function enrich(item) {
+      const previous = item.price - item.change;
+      const pct = previous === 0 ? 0 : item.change / previous * 100;
+      return { ...item, pct };
+    }
+
+    function getActiveFund() {
+      return state.funds.find(fund => fund.id === activeFundId) || state.funds[0];
+    }
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storeKey));
+        if (saved && Array.isArray(saved.funds) && saved.funds.length) return saved;
+      } catch (_) {}
+      return cloneFunds(fundPresets);
+    }
+
+    function saveState() {
+      localStorage.setItem(storeKey, JSON.stringify(state));
+    }
+
+    function cloneFunds(funds) {
+      return { funds: JSON.parse(JSON.stringify(funds)) };
+    }
+
+    function colorFromTicker(ticker) {
+      const palette = ["#1d4ed8", "#047857", "#b91c1c", "#6d28d9", "#be123c", "#0f766e", "#a16207", "#334155"];
+      const sum = String(ticker).split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      return palette[sum % palette.length];
+    }
+
+    function getTone(value) {
+      if (value > 0.004) return "positive";
+      if (value < -0.004) return "negative";
+      return "flat";
+    }
+
+    function arrow(value) {
+      if (value > 0.004) return "↑";
+      if (value < -0.004) return "↓";
+      return "→";
+    }
+
+    function formatMoney(value, currency = "USD") {
+      const digits = currency === "JPY" ? 0 : 2;
+      return Number(value).toLocaleString(currency === "JPY" ? "ja-JP" : "en-US", {
+        style: "currency",
+        currency,
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits
+      });
+    }
+
+    function formatSignedMoney(value, currency = "USD") {
+      const sign = value > 0 ? "+" : "";
+      return `${sign}${formatMoney(value, currency)}`;
+    }
+
+    function formatPct(value) {
+      return `${Number(value).toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+    }
+
+    function formatSignedPct(value) {
+      const sign = value > 0 ? "+" : "";
+      return `${sign}${formatPct(value)}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    let toastTimer;
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      toastTimer = setTimeout(() => els.toast.classList.remove("show"), 2200);
+    }
+  </script>
+</body>
+</html>
